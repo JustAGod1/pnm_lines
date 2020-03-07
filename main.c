@@ -210,7 +210,7 @@ void write_image(
 int satoi(char *input) {
     char *err = 0;
     long int result = strtol(input, &err, 10);
-    if (!err || err[0] == 0 || result != 0) return result;
+    if (!err || err[0] == 0) return result;
     printf("Cannot parse %s to int\n", input);
     exit(1);
 }
