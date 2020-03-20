@@ -20,12 +20,17 @@ float gamma_correction(float x) {
     return r;
 }
 
+float anti_gamma_correction(float x) {
+    if (x <= 0.03928 / 12.92) return x * 12.92;
+    return pow(x, 1/2.4) * 1.055 - 0.055;
+}
+
 void apply_pixel(unsigned char **bitmap, int x, int y, float alpha, unsigned char baseColor) {
     if (x < 0 || y < 0)
         return;
     if (alpha > 1) alpha = 1;
-    bitmap[y][x] = (char)(((float)((1 - alpha) * bitmap[y][x] + gamma_correction(alpha * baseColor / 255.0) * 255.0)));
 
+    bitmap[y][x] = (char)(float)(gamma_correction(((1 - alpha) * anti_gamma_correction(bitmap[y][x]) + alpha * baseColor) / 255) * 255);
 }
 
 
