@@ -30,7 +30,7 @@ void apply_pixel(unsigned char **bitmap, int x, int y, float alpha, unsigned cha
         return;
     if (alpha > 1) alpha = 1;
 
-    bitmap[y][x] = (char)(float)(gamma_correction(((1 - alpha) * anti_gamma_correction(bitmap[y][x]) + alpha * baseColor) / 255) * 255);
+    bitmap[y][x] = (char)(float)((((1 - alpha) * (bitmap[y][x]) + alpha * baseColor) / 255) * 255);
 }
 
 
@@ -154,7 +154,7 @@ void write_image(
         int line_width, int line_color) {
     double a = ((float) (y2 - y1)) / ((float) (x2 - x1));
     double b = y1 - a * x1;
-    double line_width_sq = (line_width - 1) * (line_width - 1) / 4.0;
+    double line_width_sq = (line_width) * (line_width) / 4.0;
     double ar = -(1 / a);
 
     if (x1 < 0 || y1 < 0 || x2 >= width || y2 >= height) {
@@ -174,18 +174,18 @@ void write_image(
             double intersection_x;
             double intersection_y;
 
-            if (y >= y1 && y <= y2) {
+            if (y >= y1 - line_width / 2 && y <= y2 + line_width / 2 && x >= x1 - line_width / 2 && x <= x2 + line_width / 2) {
                 intersection_x = (ar * x + br - b) / a;
                 intersection_y = a * intersection_x + b;
             } else {
                 double delta_x;
                 double delta_y;
 
-                delta_x = x1 - x;
+                delta_x = (x1 - 2) - x;
                 delta_y = y1 - y;
                 double dist_a = (delta_x * delta_x) + (delta_y * delta_y);
 
-                delta_x = x2 - x;
+                delta_x = (x2 + 2) - x;
                 delta_y = y2 - y;
                 double dist_b = (delta_x * delta_x) + (delta_y * delta_y);
 
@@ -201,7 +201,7 @@ void write_image(
             double delta_x = (intersection_x - x);
             double delta_y = (intersection_y - y);
             char pixel;
-            if (delta_x * delta_x + delta_y * delta_y < line_width_sq && y >= y1 && y <= y2 && x >= x1 && x <= x2) {
+            if (delta_x * delta_x + delta_y * delta_y < line_width_sq /* && y >= y1 && y <= y2 && x >= x1 && x <= x2*/) {
                 pixel = line_color;
             } else {
                 pixel = matrix[y][x];
