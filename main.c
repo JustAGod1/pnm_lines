@@ -162,12 +162,12 @@ void write_image(
         exit(1);
     }
 
-    if (line_width > 1) {
-        draw_wu_line(matrix, x1 - line_width / 2, y1, x2 - line_width / 2, y2, line_color);
-        draw_wu_line(matrix, x1 + line_width / 2, y1, x2 + line_width / 2, y2, line_color);
-    } else {
-        draw_wu_line(matrix, x1, y1, x2, y2, line_color);
-    }
+
+    int maxY = 0;
+    int minMaxX = 0;
+
+    int minY = height;
+    int maxMinX = 0;
     for (unsigned y = 0; y < height; ++y) {
         for (unsigned x = 0; x < width; ++x) {
             double br = y - ar * x;
@@ -200,14 +200,29 @@ void write_image(
 
             double delta_x = (intersection_x - x);
             double delta_y = (intersection_y - y);
-            char pixel;
             if (delta_x * delta_x + delta_y * delta_y < line_width_sq /* && y >= y1 && y <= y2 && x >= x1 && x <= x2*/) {
-                pixel = line_color;
-            } else {
-                pixel = matrix[y][x];
+                matrix[y][x] = line_color;
+                if (maxY <= y) {
+                    if (maxY != y) minMaxX = width;
+                    maxY = y;
+                    if (minMaxX > x) minMaxX = x;
+                }
+                if (minY >= y) {
+                    if (minY != y) maxMinX = 0;
+                    minY = y;
+                    if (maxMinX < x) maxMinX = x;
+                }
             }
-            fputc(pixel, output);
         }
+    }
+    if (line_width > 1) {
+        draw_wu_line(matrix, x1 - line_width / 2, y1, minMaxX, maxY, line_color);
+        draw_wu_line(matrix, maxMinX, minY, x2 + line_width / 2, y2, line_color);
+    } else {
+        draw_wu_line(matrix, x1, y1, x2, y2, line_color);
+    }
+    for (int y = 0; y < height; ++y) {
+        fwrites(matrix[y], 1, width, output);
     }
 
 }
