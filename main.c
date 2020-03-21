@@ -12,7 +12,7 @@ float gamma_correction(float x) {
     if (x <= 0.03928) {
         r = x / 12.92;
     } else {
-        r = pow((0.055+x)/1.055, 2.4);
+        r = pow((0.055 + x) / 1.055, 2.4);
     }
     if (r > 1) return 1;
     else if (r < 0) return 0;
@@ -22,7 +22,7 @@ float gamma_correction(float x) {
 
 float anti_gamma_correction(float x) {
     if (x <= 0.03928 / 12.92) return x * 12.92;
-    return pow(x, 1/2.4) * 1.055 - 0.055;
+    return pow(x, 1 / 2.4) * 1.055 - 0.055;
 }
 
 void apply_pixel(unsigned char **bitmap, int x, int y, float alpha, unsigned char baseColor) {
@@ -30,9 +30,8 @@ void apply_pixel(unsigned char **bitmap, int x, int y, float alpha, unsigned cha
         return;
     if (alpha > 1) alpha = 1;
 
-    bitmap[y][x] = (char)(float)((((1 - alpha) * (bitmap[y][x]) + alpha * baseColor) / 255) * 255);
+    bitmap[y][x] = (char) (float) ((((1 - alpha) * (bitmap[y][x]) + alpha * baseColor) / 255) * 255);
 }
-
 
 
 int integer_part(float a) {
@@ -146,80 +145,110 @@ void read_int(FILE *file, unsigned *src) {
     }
 }
 
+void draw_simple_vertical(int x1, int y1,
+                          int x2, int y2,
+                          unsigned char **matrix, unsigned width, unsigned height,
+                          int line_width, int line_color) {
+    for (int y = y1; y <= y2; ++y) {
+        for (int x = x1 - line_width / 2; x <= (x2 + line_width / 2); ++x) {
+            matrix[y][x] = line_color;
+        }
+    }
+}
+
+void draw_simple_horizontal(int x1, int y1,
+                            int x2, int y2,
+                            unsigned char **matrix, unsigned width, unsigned height,
+                            int line_width, int line_color) {
+    for (int y = y1 - line_width / 2; y <= y2 + line_width / 2; ++y) {
+        for (int x = x1; x <= x2; ++x) {
+            matrix[y][x] = line_color;
+        }
+    }
+}
+
 void write_image(
         FILE *output,
         int x1, int y1,
         int x2, int y2,
         unsigned char **matrix, unsigned width, unsigned height,
         int line_width, int line_color) {
-    double a = ((float) (y2 - y1)) / ((float) (x2 - x1));
-    double b = y1 - a * x1;
-    double line_width_sq = (line_width) * (line_width) / 4.0;
-    double ar = -(1 / a);
-
-    if (x1 < 0 || y1 < 0 || x2 >= width || y2 >= height) {
-        printf("Endpoints exceeds image size");
-        exit(1);
-    }
-
-
     int maxY = 0;
     int minMaxX = 0;
 
-    int minY = height;
+    int minY = height - 1;
     int maxMinX = 0;
-    for (unsigned y = 0; y < height; ++y) {
-        for (unsigned x = 0; x < width; ++x) {
-            double br = y - ar * x;
-            double intersection_x;
-            double intersection_y;
+    if (y1 != y2 && x1 != x2) {
+        double a = ((float) (y2 - y1)) / ((float) (x2 - x1));
+        double b = y1 - a * x1;
+        double line_width_sq = (line_width - 1) * (line_width - 1) / 4.0;
+        double ar = -(1 / a);
 
-            if (y >= y1 - line_width / 2 && y <= y2 + line_width / 2 && x >= x1 - line_width / 2 && x <= x2 + line_width / 2) {
-                intersection_x = (ar * x + br - b) / a;
-                intersection_y = a * intersection_x + b;
-            } else {
-                double delta_x;
-                double delta_y;
+        if (x1 < 0 || y1 < 0 || x2 >= width || y2 >= height) {
+            printf("Endpoints exceeds image size");
+            exit(1);
+        }
 
-                delta_x = (x1 - 2) - x;
-                delta_y = y1 - y;
-                double dist_a = (delta_x * delta_x) + (delta_y * delta_y);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                double br = y - ar * x;
+                double intersection_x;
+                double intersection_y;
 
-                delta_x = (x2 + 2) - x;
-                delta_y = y2 - y;
-                double dist_b = (delta_x * delta_x) + (delta_y * delta_y);
-
-                if (dist_a > dist_b) {
-                    intersection_x = x2;
-                    intersection_y = y2;
+                if (y >= y1 - line_width / 2 && y <= y2 + line_width / 2 && x >= x1 - line_width / 2 && x <= x2 + line_width / 2) {
+                    intersection_x = (br - b) / (a - ar);
+                    intersection_y = a * intersection_x + b;
                 } else {
-                    intersection_x = x1;
-                    intersection_y = y1;
-                }
-            }
+                    double delta_x;
+                    double delta_y;
 
-            double delta_x = (intersection_x - x);
-            double delta_y = (intersection_y - y);
-            if (delta_x * delta_x + delta_y * delta_y < line_width_sq /* && y >= y1 && y <= y2 && x >= x1 && x <= x2*/) {
-                matrix[y][x] = line_color;
-                if (maxY <= y) {
-                    if (maxY != y) minMaxX = width;
-                    maxY = y;
-                    if (minMaxX > x) minMaxX = x;
+                    delta_x = (x1 - 2) - x;
+                    delta_y = y1 - y;
+                    double dist_a = (delta_x * delta_x) + (delta_y * delta_y);
+
+                    delta_x = (x2 + 2) - x;
+                    delta_y = y2 - y;
+                    double dist_b = (delta_x * delta_x) + (delta_y * delta_y);
+
+                    if (dist_a > dist_b) {
+                        intersection_x = x2;
+                        intersection_y = y2;
+                    } else {
+                        intersection_x = x1;
+                        intersection_y = y1;
+                    }
                 }
-                if (minY >= y) {
-                    if (minY != y) maxMinX = 0;
-                    minY = y;
-                    if (maxMinX < x) maxMinX = x;
+
+                double delta_x = (intersection_x - (double)x);
+                double delta_y = (intersection_y - (double)y);
+                unsigned char pixel;
+                if (delta_x * delta_x + delta_y * delta_y < line_width_sq) {
+                    matrix[y][x] = line_color;
+                    if (maxY <= y) {
+                        if (maxY != y) minMaxX = width - 1;
+                        maxY = y;
+                        if (minMaxX > x) minMaxX = x;
+                    }
+                    if (minY >= y) {
+                        if (minY != y) maxMinX = 0;
+                        minY = y;
+                        if (maxMinX < x) maxMinX = x;
+                    }
                 }
             }
         }
-    }
-    if (line_width > 1) {
-        draw_wu_line(matrix, x1 - line_width / 2, y1, minMaxX, maxY, line_color);
-        draw_wu_line(matrix, maxMinX, minY, x2 + line_width / 2, y2, line_color);
+        if (line_width > 1) {
+            draw_wu_line(matrix, x1 - line_width / 2, y1, minMaxX- 1, maxY , line_color);
+            draw_wu_line(matrix, maxMinX + 1, minY, x2 + line_width / 2, y2, line_color);
+        } else {
+            draw_wu_line(matrix, x1, y1, x2, y2, line_color);
+        }
+
+    } else if (x1 == x2) {
+        draw_simple_vertical(x1, y1, x2, y2, matrix, width, height, line_width, line_color);
+
     } else {
-        draw_wu_line(matrix, x1, y1, x2, y2, line_color);
+        draw_simple_horizontal(x1, y1, x2, y2, matrix, width, height, line_width, line_color);
     }
     for (int y = 0; y < height; ++y) {
         fwrites(matrix[y], 1, width, output);
@@ -283,7 +312,7 @@ int main(int argc, char **args) {
     write_image(
             output,
             satoi(args[5]), satoi(args[6]),
-            satoi(args[7]), satoi(args[8]) ,
+            satoi(args[7]), satoi(args[8]),
             matrix,
             width, height,
             satoi(args[4]), satoi(args[3])
